@@ -16,6 +16,7 @@ import {
   PieOutline,
   SetOutline,
   UserOutline,
+  RightOutline,
 } from 'antd-mobile-icons';
 import { useItemStore, useAccountStore } from '@/store';
 import { formatMoney } from '@/lib/utils';
@@ -24,7 +25,8 @@ import { getSettlementLogs, saveSettlementLogs } from '@/lib/db';
 
 export default function SettlementPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('unsettled');
+  const [activeTab, setActiveTab] = useState('settlement');
+  const [settleTab, setSettleTab] = useState<'unsettled' | 'settled'>('unsettled');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -49,7 +51,7 @@ export default function SettlementPage() {
   };
 
   const handleSelectAll = () => {
-    const currentItems = activeTab === 'unsettled' ? unsettledItems : settledItems;
+    const currentItems = settleTab === 'unsettled' ? unsettledItems : settledItems;
     if (selectedItems.length === currentItems.length) {
       setSelectedItems([]);
     } else {
@@ -210,13 +212,13 @@ export default function SettlementPage() {
     );
   };
 
-  const currentItems = activeTab === 'unsettled' ? unsettledItems : settledItems;
+  const currentItems = settleTab === 'unsettled' ? unsettledItems : settledItems;
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#E8E4DD' }}>
+    <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%)' }}>
       <div 
-        className="relative px-6 pt-14 pb-10"
-        style={{ background: 'linear-gradient(180deg, #F5F2ED 0%, #E8E4DD 100%)' }}
+        className="relative px-6 pt-14 pb-12"
+        style={{ background: 'transparent' }}
       >
         <div className="relative z-10">
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#0f172a' }}>内部结算</h1>
@@ -229,20 +231,20 @@ export default function SettlementPage() {
           <button
             className="flex-1 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer"
             style={{ 
-              background: activeTab === 'unsettled' ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : 'rgba(255,255,255,0.4)',
-              color: activeTab === 'unsettled' ? '#fff' : '#64748b'
+              background: settleTab === 'unsettled' ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : 'rgba(255,255,255,0.4)',
+              color: settleTab === 'unsettled' ? '#fff' : '#64748b'
             }}
-            onClick={() => { setActiveTab('unsettled'); setSelectedItems([]); }}
+            onClick={() => { setSettleTab('unsettled'); setSelectedItems([]); }}
           >
             待结算 ({unsettledItems.length})
           </button>
           <button
             className="flex-1 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer"
             style={{ 
-              background: activeTab === 'settled' ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : 'rgba(255,255,255,0.4)',
-              color: activeTab === 'settled' ? '#fff' : '#64748b'
+              background: settleTab === 'settled' ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : 'rgba(255,255,255,0.4)',
+              color: settleTab === 'settled' ? '#fff' : '#64748b'
             }}
-            onClick={() => { setActiveTab('settled'); setSelectedItems([]); }}
+            onClick={() => { setSettleTab('settled'); setSelectedItems([]); }}
           >
             已结算 ({settledItems.length})
           </button>
@@ -264,7 +266,7 @@ export default function SettlementPage() {
 
         {currentItems.length === 0 ? (
           <div className="glass-card p-12 text-center">
-            <Empty description={<span className="font-semibold" style={{ color: '#64748b' }}>{activeTab === 'unsettled' ? '暂无待结算商品' : '暂无已结算商品'}</span>} />
+            <Empty description={<span className="font-semibold" style={{ color: '#64748b' }}>{settleTab === 'unsettled' ? '暂无待结算商品' : '暂无已结算商品'}</span>} />
           </div>
         ) : (
           currentItems.map(renderItemCard)
@@ -284,38 +286,41 @@ export default function SettlementPage() {
         </div>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 glass-tabbar flex justify-around py-3 px-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 glass-tabbar flex justify-around py-3 px-2 z-50">
         <button 
           onClick={() => { setActiveTab('home'); router.push('/'); }}
-          className="flex flex-col items-center gap-1.5 py-2 px-4 rounded-2xl transition-all cursor-pointer"
-          style={{}}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
         >
-          <AppstoreOutline style={{ fontSize: 24, color: activeTab === 'home' ? '#0f172a' : '#64748b' }} />
-          <span style={{ fontSize: 11, color: activeTab === 'home' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'home' ? 700 : 500 }}>首页</span>
+          <AppstoreOutline style={{ fontSize: 22, color: activeTab === 'home' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'home' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'home' ? 700 : 500 }}>首页</span>
         </button>
         <button 
           onClick={() => { setActiveTab('items'); router.push('/items'); }}
-          className="flex flex-col items-center gap-1.5 py-2 px-4 rounded-2xl transition-all cursor-pointer"
-          style={{}}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
         >
-          <UnorderedListOutline style={{ fontSize: 24, color: activeTab === 'items' ? '#0f172a' : '#64748b' }} />
-          <span style={{ fontSize: 11, color: activeTab === 'items' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'items' ? 700 : 500 }}>商品</span>
+          <UnorderedListOutline style={{ fontSize: 22, color: activeTab === 'items' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'items' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'items' ? 700 : 500 }}>商品</span>
         </button>
         <button 
-          onClick={() => { setActiveTab('stats'); router.push('/stats'); }}
-          className="flex flex-col items-center gap-1.5 py-2 px-4 rounded-2xl transition-all cursor-pointer"
-          style={{}}
+          onClick={() => { setActiveTab('settlement'); router.push('/settlement'); }}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
         >
-          <PieOutline style={{ fontSize: 24, color: activeTab === 'stats' ? '#0f172a' : '#64748b' }} />
-          <span style={{ fontSize: 11, color: activeTab === 'stats' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'stats' ? 700 : 500 }}>统计</span>
+          <PieOutline style={{ fontSize: 22, color: activeTab === 'settlement' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'settlement' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'settlement' ? 700 : 500 }}>结算</span>
         </button>
         <button 
           onClick={() => { setActiveTab('accounts'); router.push('/accounts'); }}
-          className="flex flex-col items-center gap-1.5 py-2 px-4 rounded-2xl transition-all cursor-pointer"
-          style={{}}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
         >
-          <SetOutline style={{ fontSize: 24, color: activeTab === 'accounts' ? '#0f172a' : '#64748b' }} />
-          <span style={{ fontSize: 11, color: activeTab === 'accounts' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'accounts' ? 700 : 500 }}>账号</span>
+          <SetOutline style={{ fontSize: 22, color: activeTab === 'accounts' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'accounts' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'accounts' ? 700 : 500 }}>账号</span>
+        </button>
+        <button 
+          onClick={() => { setActiveTab('settings'); router.push('/settings'); }}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
+        >
+          <RightOutline style={{ fontSize: 22, color: activeTab === 'settings' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'settings' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'settings' ? 700 : 500 }}>设置</span>
         </button>
       </div>
     </div>

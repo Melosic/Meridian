@@ -14,6 +14,8 @@ import {
   AppstoreOutline, 
   UnorderedListOutline, 
   SetOutline,
+  PieOutline,
+  RightOutline,
 } from 'antd-mobile-icons';
 import { useCategoryStore, useItemStore } from '@/store';
 import type { Category } from '@/types';
@@ -227,30 +229,41 @@ export default function CategoriesPage() {
         ]}
       />
 
-      <div className="fixed bottom-0 left-0 right-0 glass-tabbar flex justify-around py-3 px-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 glass-tabbar flex justify-around py-3 px-2 z-50">
         <button 
           onClick={() => { setActiveTab('home'); router.push('/'); }}
-          className="flex flex-col items-center gap-1.5 py-2 px-6 rounded-2xl transition-all cursor-pointer"
-          style={{}}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
         >
-          <AppstoreOutline style={{ fontSize: 24, color: activeTab === 'home' ? '#0f172a' : '#64748b' }} />
-          <span style={{ fontSize: 11, color: activeTab === 'home' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'home' ? 700 : 500 }}>首页</span>
+          <AppstoreOutline style={{ fontSize: 22, color: activeTab === 'home' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'home' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'home' ? 700 : 500 }}>首页</span>
         </button>
         <button 
           onClick={() => { setActiveTab('items'); router.push('/items'); }}
-          className="flex flex-col items-center gap-1.5 py-2 px-6 rounded-2xl transition-all cursor-pointer"
-          style={{}}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
         >
-          <UnorderedListOutline style={{ fontSize: 24, color: activeTab === 'items' ? '#0f172a' : '#64748b' }} />
-          <span style={{ fontSize: 11, color: activeTab === 'items' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'items' ? 700 : 500 }}>商品</span>
+          <UnorderedListOutline style={{ fontSize: 22, color: activeTab === 'items' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'items' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'items' ? 700 : 500 }}>商品</span>
+        </button>
+        <button 
+          onClick={() => { setActiveTab('settlement'); router.push('/settlement'); }}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
+        >
+          <PieOutline style={{ fontSize: 22, color: activeTab === 'settlement' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'settlement' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'settlement' ? 700 : 500 }}>结算</span>
         </button>
         <button 
           onClick={() => { setActiveTab('accounts'); router.push('/accounts'); }}
-          className="flex flex-col items-center gap-1.5 py-2 px-6 rounded-2xl transition-all cursor-pointer"
-          style={{}}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
         >
-          <SetOutline style={{ fontSize: 24, color: activeTab === 'accounts' ? '#0f172a' : '#64748b' }} />
-          <span style={{ fontSize: 11, color: activeTab === 'accounts' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'accounts' ? 700 : 500 }}>账号</span>
+          <SetOutline style={{ fontSize: 22, color: activeTab === 'accounts' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'accounts' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'accounts' ? 700 : 500 }}>账号</span>
+        </button>
+        <button 
+          onClick={() => { setActiveTab('settings'); router.push('/settings'); }}
+          className="flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all cursor-pointer"
+        >
+          <RightOutline style={{ fontSize: 22, color: activeTab === 'settings' ? '#0f172a' : '#64748b' }} />
+          <span style={{ fontSize: 10, color: activeTab === 'settings' ? '#0f172a' : '#64748b', fontWeight: activeTab === 'settings' ? 700 : 500 }}>设置</span>
         </button>
       </div>
     </div>
