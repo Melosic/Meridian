@@ -9,6 +9,8 @@ import {
   Image,
   Selector,
   Dialog,
+  Checkbox,
+  Toast,
 } from 'antd-mobile';
 import { 
   AppstoreOutline, 
@@ -17,6 +19,7 @@ import {
   PieOutline,
   FilterOutline,
   RightOutline,
+  DeleteOutline,
 } from 'antd-mobile-icons';
 import { useItemStore, useCategoryStore, useAccountStore } from '@/store';
 import { formatMoney } from '@/lib/utils';
@@ -32,8 +35,13 @@ export default function ItemsPage() {
   const [filterCategoryId, setFilterCategoryId] = useState(categoryIdParam || '');
   const [filterBuyAccountId, setFilterBuyAccountId] = useState('');
   const [filterSellAccountId, setFilterSellAccountId] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const PAGE_SIZE = 20;
 
   const items = useItemStore((s) => s.items);
+  const deleteItem = useItemStore((s) => s.deleteItem);
   const categories = useCategoryStore((s) => s.categories);
   const accounts = useAccountStore((s) => s.accounts);
 
@@ -61,20 +69,74 @@ export default function ItemsPage() {
     return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [items, filterCategoryId, searchText, filterBuyAccountId, filterSellAccountId]);
 
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, currentPage]);
+
+  const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+
   const categoryName = filterCategoryId ? categories.find((c) => c.id === filterCategoryId)?.name : null;
 
   const clearFilters = () => {
     setFilterCategoryId('');
     setFilterBuyAccountId('');
     setFilterSellAccountId('');
+    setCurrentPage(1);
   };
 
   const hasActiveFilters = filterCategoryId || filterBuyAccountId || filterSellAccountId;
+
+  const toggleSelectItem = (itemId: string) => {
+    setSelectedItems(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItems.length === filteredItems.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(filteredItems.map(item => item.id));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedItems.length === 0) return;
+    
+    Dialog.confirm({
+      title: '确认删除',
+      content: `确定要删除选中的 ${selectedItems.length} 个商品吗？`,
+      onConfirm: async () => {
+        for (const itemId of selectedItems) {
+          await deleteItem(itemId);
+        }
+        setSelectedItems([]);
+        setSelectMode(false);
+        Toast.show({ content: '删除成功', position: 'bottom' });
+      },
+    });
+  };
+
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [filterCategoryId, searchText, filterBuyAccountId, filterSellAccountId]);
 
   const renderItemCard = (item: Item, index: number) => {
     const buyAccount = accounts.find((a) => a.id === item.buyAccountId);
     const sellAccount = accounts.find((a) => a.id === item.sellAccountId);
     const category = item.categoryId ? categories.find((c) => c.id === item.categoryId) : null;
+    const isSelected = selectedItems.includes(item.id);
+
+    const handleClick = () => {
+      if (selectMode) {
+        toggleSelectItem(item.id);
+      } else {
+        router.push(`/items/${item.id}`);
+      }
+    };
 
     return (
       <div 
@@ -84,10 +146,20 @@ export default function ItemsPage() {
       >
         <div 
           className="glass-card p-5 cursor-pointer"
-          onClick={() => router.push(`/items/${item.id}`)}
+          style={{ 
+            border: selectMode && isSelected ? '2px solid #0f172a' : 'none'
+          }}
+          onClick={handleClick}
         >
-          <div className="flex gap-4">
-            {item.images.length > 0 && (
+          <div className="flex gap-4 items-start">
+            {selectMode && (
+              <Checkbox 
+                checked={isSelected}
+                onChange={() => toggleSelectItem(item.id)}
+                className="shrink-0 mt-2"
+              />
+            )}
+            {item.images.length > 0 && !selectMode && (
               <div className="relative shrink-0">
                 <Image
                   src={item.images[0].data}
@@ -103,6 +175,16 @@ export default function ItemsPage() {
                     ✓
                   </div>
                 )}
+              </div>
+            )}
+            {item.images.length > 0 && selectMode && (
+              <div className="relative shrink-0">
+                <Image
+                  src={item.images[0].data}
+                  className="w-16 h-16 rounded-2xl"
+                  style={{ width: 64, height: 64, objectFit: 'cover' }}
+                  fit="cover"
+                />
               </div>
             )}
             <div className="flex-1 min-w-0 py-1">
@@ -142,14 +224,46 @@ export default function ItemsPage() {
           <h1 className="text-2xl font-bold" style={{ color: '#0f172a' }}>
             {categoryName ? categoryName : '商品'}
           </h1>
-          <Button
-            fill="none"
-            onClick={() => setFilterVisible(true)}
-            className="cursor-pointer font-semibold"
-            style={hasActiveFilters ? { color: '#0f172a' } : { color: '#64748b' }}
-          >
-            <FilterOutline />
-          </Button>
+          {selectMode ? (
+            <div className="flex gap-2">
+              <Button
+                fill="none"
+                onClick={() => { toggleSelectAll(); }}
+                className="cursor-pointer font-semibold text-sm"
+                style={{ color: '#0f172a' }}
+              >
+                {selectedItems.length === filteredItems.length ? '取消' : '全选'}
+              </Button>
+              <Button
+                fill="none"
+                onClick={() => { setSelectMode(false); setSelectedItems([]); }}
+                className="cursor-pointer font-semibold text-sm"
+                style={{ color: '#64748b' }}
+              >
+                取消
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                fill="none"
+                onClick={() => { if (items.length > 0) setSelectMode(true); }}
+                className="cursor-pointer font-semibold"
+                style={{ color: items.length > 0 ? '#0f172a' : '#94a3b8' }}
+                disabled={items.length === 0}
+              >
+                选择
+              </Button>
+              <Button
+                fill="none"
+                onClick={() => setFilterVisible(true)}
+                className="cursor-pointer font-semibold"
+                style={hasActiveFilters ? { color: '#0f172a' } : { color: '#64748b' }}
+              >
+                <FilterOutline />
+              </Button>
+            </div>
+          )}
         </div>
         <SearchBar
           placeholder="搜索商品名称"
@@ -179,7 +293,49 @@ export default function ItemsPage() {
           </div>
         ) : (
           <>
-            {filteredItems.map(renderItemCard)}
+            {paginatedItems.map(renderItemCard)}
+            
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 py-6">
+                <button
+                  className="px-4 py-2 rounded-xl text-sm font-semibold"
+                  style={{ 
+                    background: currentPage > 1 ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)',
+                    color: currentPage > 1 ? '#0f172a' : '#94a3b8'
+                  }}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  上一页
+                </button>
+                <span className="text-sm font-semibold" style={{ color: '#64748b' }}>
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  className="px-4 py-2 rounded-xl text-sm font-semibold"
+                  style={{ 
+                    background: currentPage < totalPages ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)',
+                    color: currentPage < totalPages ? '#0f172a' : '#94a3b8'
+                  }}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  下一页
+                </button>
+              </div>
+            )}
+
+            {selectMode && (
+              <button 
+                className="glass-button w-full py-4 text-base cursor-pointer mt-4"
+                onClick={handleBatchDelete}
+                disabled={selectedItems.length === 0}
+                style={{ opacity: selectedItems.length === 0 ? 0.5 : 1 }}
+              >
+                删除选中 ({selectedItems.length})
+              </button>
+            )}
+
             <div 
               className="my-8 p-6 text-center cursor-pointer transition-all hover:scale-[1.02]"
               style={{ 
@@ -256,7 +412,7 @@ export default function ItemsPage() {
               <Selector
                 options={[
                   { label: '不限', value: '' },
-                  ...accounts.filter((a) => a.type === 'buy').map((a) => ({ label: a.name, value: a.id })),
+                  ...accounts.map((a) => ({ label: a.name, value: a.id })),
                 ]}
                 value={[filterBuyAccountId]}
                 onChange={(val) => setFilterBuyAccountId(val[0] || '')}
@@ -268,7 +424,7 @@ export default function ItemsPage() {
               <Selector
                 options={[
                   { label: '不限', value: '' },
-                  ...accounts.filter((a) => a.type === 'sell').map((a) => ({ label: a.name, value: a.id })),
+                  ...accounts.map((a) => ({ label: a.name, value: a.id })),
                 ]}
                 value={[filterSellAccountId]}
                 onChange={(val) => setFilterSellAccountId(val[0] || '')}

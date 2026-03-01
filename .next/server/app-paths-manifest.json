@@ -1,14 +1,7 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/items/[id]/edit/page": "app/items/[id]/edit/page.js",
-  "/categories/page": "app/categories/page.js",
-  "/import/page": "app/import/page.js",
-  "/items/[id]/page": "app/items/[id]/page.js",
   "/accounts/page": "app/accounts/page.js",
-  "/items/page": "app/items/page.js",
-  "/items/new/page": "app/items/new/page.js",
-  "/settings/page": "app/settings/page.js",
-  "/settlement/page": "app/settlement/page.js",
   "/page": "app/page.js",
-  "/stats/page": "app/stats/page.js"
+  "/items/page": "app/items/page.js",
+  "/settlement/page": "app/settlement/page.js",
+  "/settings/page": "app/settings/page.js"
 }

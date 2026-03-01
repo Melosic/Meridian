@@ -188,11 +188,9 @@ export default function ImportPage() {
 
     setImporting(true);
     try {
-      const accountNameToId = (name: string, type: 'buy' | 'sell' | 'shipping') => {
-        const account = accounts.find(a => a.name === name && a.type === type);
-        if (account) return account.id;
-        const anyTypeAccount = accounts.find(a => a.name === name);
-        return anyTypeAccount?.id || '';
+      const accountNameToId = (name: string) => {
+        const account = accounts.find(a => a.name === name);
+        return account?.id || '';
       };
 
       const categoryNameToId = (name: string) => {
@@ -209,9 +207,9 @@ export default function ImportPage() {
         
         const name = fieldMapping.name ? row[fieldMapping.name as keyof typeof row] || '未命名' : '未命名';
         const categoryId = fieldMapping.category ? categoryNameToId(row[fieldMapping.category as keyof typeof row] || '') : undefined;
-        const buyAccountId = fieldMapping.buyAccount ? accountNameToId(row[fieldMapping.buyAccount as keyof typeof row] || '', 'buy') : '';
-        const sellAccountId = fieldMapping.sellAccount ? accountNameToId(row[fieldMapping.sellAccount as keyof typeof row] || '', 'sell') : '';
-        const shippingAccountId = fieldMapping.shippingAccount ? accountNameToId(row[fieldMapping.shipping as keyof typeof row] || '', 'shipping') : sellAccountId;
+        const buyAccountId = fieldMapping.buyAccount ? accountNameToId(row[fieldMapping.buyAccount as keyof typeof row] || '') : '';
+        const sellAccountId = fieldMapping.sellAccount ? accountNameToId(row[fieldMapping.sellAccount as keyof typeof row] || '') : '';
+        const shippingAccountId = fieldMapping.shippingAccount ? accountNameToId(row[fieldMapping.shipping as keyof typeof row] || '') : sellAccountId;
         const remark = fieldMapping.remark ? row[fieldMapping.remark as keyof typeof row] || '' : '';
 
         return {

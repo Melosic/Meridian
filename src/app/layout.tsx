@@ -3,7 +3,7 @@ import "./globals.css";
 import { AppProvider } from '@/components/AppProvider';
 
 export const metadata: Metadata = {
-  title: "Meridian - 利润记账",
+  title: "Meridian",
   description: "个人二手卖家轻量级利润记账应用",
 };
 

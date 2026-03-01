@@ -1,7 +1,6 @@
 export interface Account {
   id: string;
   name: string;
-  type: 'buy' | 'sell' | 'shipping';
   createdAt: string;
   updatedAt: string;
 }

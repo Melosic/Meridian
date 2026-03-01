@@ -5,10 +5,8 @@ import { useRouter } from 'next/navigation';
 import { 
   TabBar, 
   Toast,
-  Button,
   Dialog,
   Input,
-  Selector,
   SwipeAction,
 } from 'antd-mobile';
 import { 
@@ -16,7 +14,6 @@ import {
   UnorderedListOutline, 
   SetOutline,
   PieOutline,
-  CloseOutline,
   RightOutline,
 } from 'antd-mobile-icons';
 import { useAccountStore, useItemStore } from '@/store';
@@ -28,7 +25,7 @@ export default function AccountsPage() {
   const [addDialogVisible, setAddDialogVisible] = useState(false);
   const [editDialogVisible, setEditDialogVisible] = useState(false);
   const [currentAccount, setCurrentAccount] = useState<Account | null>(null);
-  const [formData, setFormData] = useState({ name: '', type: 'buy' as Account['type'] });
+  const [formData, setFormData] = useState({ name: '' });
   
   const accounts = useAccountStore((s) => s.accounts);
   const addAccount = useAccountStore((s) => s.addAccount);
@@ -41,8 +38,13 @@ export default function AccountsPage() {
       Toast.show({ content: '请输入账号名称', position: 'bottom' });
       return;
     }
-    await addAccount({ name: formData.name.trim(), type: formData.type });
-    setFormData({ name: '', type: 'buy' });
+    const exists = accounts.some(a => a.name.toLowerCase() === formData.name.trim().toLowerCase());
+    if (exists) {
+      Toast.show({ content: '该账号名称已存在', position: 'bottom' });
+      return;
+    }
+    await addAccount({ name: formData.name.trim() });
+    setFormData({ name: '' });
     setAddDialogVisible(false);
     Toast.show({ content: '添加成功', position: 'bottom' });
   };
@@ -52,8 +54,13 @@ export default function AccountsPage() {
       Toast.show({ content: '请输入账号名称', position: 'bottom' });
       return;
     }
-    await updateAccount(currentAccount.id, { name: formData.name.trim(), type: formData.type });
-    setFormData({ name: '', type: 'buy' });
+    const exists = accounts.some(a => a.name.toLowerCase() === formData.name.trim().toLowerCase() && a.id !== currentAccount.id);
+    if (exists) {
+      Toast.show({ content: '该账号名称已存在', position: 'bottom' });
+      return;
+    }
+    await updateAccount(currentAccount.id, { name: formData.name.trim() });
+    setFormData({ name: '' });
     setCurrentAccount(null);
     setEditDialogVisible(false);
     Toast.show({ content: '修改成功', position: 'bottom' });
@@ -77,75 +84,8 @@ export default function AccountsPage() {
 
   const openEditDialog = (account: Account) => {
     setCurrentAccount(account);
-    setFormData({ name: account.name, type: account.type });
+    setFormData({ name: account.name });
     setEditDialogVisible(true);
-  };
-
-  const getTypeLabel = (type: Account['type']) => {
-    const map = { buy: '购买账号', sell: '销售账号', shipping: '邮费账号' };
-    return map[type];
-  };
-
-  const getTypeColor = (type: Account['type']) => {
-    const map = { buy: '#0f172a', sell: '#10b981', shipping: '#f59e0b' };
-    return map[type];
-  };
-
-  const groupedAccounts = {
-    buy: accounts.filter((a) => a.type === 'buy'),
-    sell: accounts.filter((a) => a.type === 'sell'),
-    shipping: accounts.filter((a) => a.type === 'shipping'),
-  };
-
-  const renderAccountItem = (account: Account, index: number) => (
-    <div key={account.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
-      <SwipeAction
-        style={{ background: 'transparent', boxShadow: 'none' }}
-        rightActions={[
-          {
-            key: 'edit',
-            text: '编辑',
-            color: 'primary',
-            onClick: () => openEditDialog(account),
-          },
-          {
-            key: 'delete',
-            text: '删除',
-            color: 'danger',
-            onClick: () => handleDelete(account),
-          },
-        ]}
-      >
-        <div className="glass-card p-3 cursor-pointer" style={{ boxShadow: 'none', borderRadius: '16px' }}>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div 
-                className="category-icon"
-                style={{ background: `linear-gradient(135deg, ${getTypeColor(account.type)} 0%, ${account.type === 'buy' ? '#1e293b' : account.type === 'sell' ? '#059669' : '#d97706'} 100%)` }}
-              >
-                {account.name.charAt(0)}
-              </div>
-              <div>
-                <div className="font-bold text-lg" style={{ color: '#0f172a' }}>{account.name}</div>
-                <div className="text-xs mt-1 font-semibold" style={{ color: '#64748b' }}>{getTypeLabel(account.type)}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </SwipeAction>
-    </div>
-  );
-
-  const renderAccountGroup = (title: string, type: Account['type'], items: Account[]) => {
-    if (items.length === 0) return null;
-    return (
-      <div className="mb-6">
-        <h3 className="text-sm font-bold mb-4 px-1" style={{ color: '#64748b' }}>{title}</h3>
-        <div className="space-y-3">
-          {items.map((account, idx) => renderAccountItem(account, idx))}
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -156,7 +96,7 @@ export default function AccountsPage() {
       >
         <div className="relative z-10">
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#0f172a' }}>账号管理</h1>
-          <p className="text-sm mt-2 font-light" style={{ color: '#64748b' }}>管理购买、销售、邮费账号</p>
+          <p className="text-sm mt-2 font-light" style={{ color: '#64748b' }}>管理交易账号</p>
         </div>
       </div>
 
@@ -176,9 +116,48 @@ export default function AccountsPage() {
           </div>
         ) : (
           <>
-            {renderAccountGroup('购买账号', 'buy', groupedAccounts.buy)}
-            {renderAccountGroup('销售账号', 'sell', groupedAccounts.sell)}
-            {renderAccountGroup('邮费账号', 'shipping', groupedAccounts.shipping)}
+            <div className="space-y-3 mb-6">
+              {accounts.map((account, index) => (
+                <div key={account.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                  <SwipeAction
+                    style={{ background: 'transparent', boxShadow: 'none' }}
+                    rightActions={[
+                      {
+                        key: 'edit',
+                        text: '编辑',
+                        color: 'primary',
+                        onClick: () => openEditDialog(account),
+                      },
+                      {
+                        key: 'delete',
+                        text: '删除',
+                        color: 'danger',
+                        onClick: () => handleDelete(account),
+                      },
+                    ]}
+                  >
+                    <div className="glass-card p-4 cursor-pointer" style={{ boxShadow: 'none', borderRadius: '16px' }}>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                          <div 
+                            className="category-icon"
+                            style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}
+                          >
+                            {account.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-lg" style={{ color: '#0f172a' }}>{account.name}</div>
+                            <div className="text-xs mt-1 font-semibold" style={{ color: '#64748b' }}>
+                              关联 {checkItemCountByAccount(account.id)} 个商品
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </SwipeAction>
+                </div>
+              ))}
+            </div>
             <div 
               className="my-8 p-6 text-center cursor-pointer transition-all hover:scale-[1.02]"
               style={{ 
@@ -199,32 +178,18 @@ export default function AccountsPage() {
         onClose={() => setAddDialogVisible(false)}
         title={<div className="font-bold" style={{ color: '#0f172a' }}>添加账号</div>}
         content={
-          <div className="space-y-6">
-            <Input
-              placeholder="请输入账号名称"
-              value={formData.name}
-              onChange={(val) => setFormData({ ...formData, name: val })}
-              style={{ 
-                borderRadius: 16,
-                '--placeholder-color': '#94a3b8',
-                background: 'rgba(255, 255, 255, 0.5)',
-                height: 50,
-                padding: '0 16px',
-              }}
-            />
-            <div>
-              <div className="text-sm mb-4 font-semibold" style={{ color: '#64748b' }}>账号类型</div>
-              <Selector
-                options={[
-                  { label: '购买账号', value: 'buy' },
-                  { label: '销售账号', value: 'sell' },
-                  { label: '邮费账号', value: 'shipping' },
-                ]}
-                value={[formData.type]}
-                onChange={(val) => setFormData({ ...formData, type: val[0] as Account['type'] })}
-              />
-            </div>
-          </div>
+          <Input
+            placeholder="请输入账号名称"
+            value={formData.name}
+            onChange={(val) => setFormData({ name: val })}
+            style={{ 
+              borderRadius: 16,
+              '--placeholder-color': '#94a3b8',
+              background: 'rgba(255, 255, 255, 0.5)',
+              height: 50,
+              padding: '0 16px',
+            }}
+          />
         }
         actions={[
           { text: '取消', key: 'cancel', onClick: () => setAddDialogVisible(false), style: { color: '#64748b' } },
@@ -242,32 +207,18 @@ export default function AccountsPage() {
         onClose={() => setEditDialogVisible(false)}
         title={<div className="font-bold" style={{ color: '#0f172a' }}>编辑账号</div>}
         content={
-          <div className="space-y-6">
-            <Input
-              placeholder="请输入账号名称"
-              value={formData.name}
-              onChange={(val) => setFormData({ ...formData, name: val })}
-              style={{ 
-                borderRadius: 16,
-                '--placeholder-color': '#94a3b8',
-                background: 'rgba(255, 255, 255, 0.5)',
-                height: 50,
-                padding: '0 16px',
-              }}
-            />
-            <div>
-              <div className="text-sm mb-4 font-semibold" style={{ color: '#64748b' }}>账号类型</div>
-              <Selector
-                options={[
-                  { label: '购买账号', value: 'buy' },
-                  { label: '销售账号', value: 'sell' },
-                  { label: '邮费账号', value: 'shipping' },
-                ]}
-                value={[formData.type]}
-                onChange={(val) => setFormData({ ...formData, type: val[0] as Account['type'] })}
-              />
-            </div>
-          </div>
+          <Input
+            placeholder="请输入账号名称"
+            value={formData.name}
+            onChange={(val) => setFormData({ name: val })}
+            style={{ 
+              borderRadius: 16,
+              '--placeholder-color': '#94a3b8',
+              background: 'rgba(255, 255, 255, 0.5)',
+              height: 50,
+              padding: '0 16px',
+            }}
+          />
         }
         actions={[
           { text: '取消', key: 'cancel', onClick: () => setEditDialogVisible(false), style: { color: '#64748b' } },

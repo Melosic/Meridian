@@ -37,9 +37,9 @@ export default function NewItemPage() {
   const accounts = useAccountStore((s) => s.accounts);
   const addItem = useItemStore((s) => s.addItem);
 
-  const buyAccounts = accounts.filter((a) => a.type === 'buy');
-  const sellAccounts = accounts.filter((a) => a.type === 'sell');
-  const shippingAccounts = accounts.filter((a) => a.type === 'shipping');
+  const buyAccounts = accounts;
+  const sellAccounts = accounts;
+  const shippingAccounts = accounts;
 
   const profit = calculateProfit(
     Number(price) || 0,
