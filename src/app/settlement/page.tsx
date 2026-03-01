@@ -197,9 +197,8 @@ export default function SettlementPage() {
                 {item.shipping > 0 && ` · 邮费 ${formatMoney(item.shipping)}`}
               </div>
               <div 
-                className="text-sm font-bold px-4 py-2 rounded-xl"
+                className="text-sm font-bold"
                 style={{ 
-                  background: item.profit >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
                   color: item.profit >= 0 ? '#059669' : '#dc2626'
                 }}
               >
@@ -274,14 +273,14 @@ export default function SettlementPage() {
       </div>
 
       {currentItems.length > 0 && (
-        <div className="fixed bottom-14 left-0 right-0 p-4" style={{ background: 'linear-gradient(to top, rgba(227, 221, 215, 0.98), rgba(227, 221, 215, 0))' }}>
+        <div className="fixed bottom-20 left-0 right-0 p-4" style={{ background: 'linear-gradient(to top, rgba(240, 240, 240, 0.98), rgba(240, 240, 240, 0))' }}>
           <button 
             className="glass-button w-full py-4 text-base cursor-pointer"
-            onClick={activeTab === 'unsettled' ? handleSettle : handleUnsettle}
+            onClick={settleTab === 'unsettled' ? handleSettle : handleUnsettle}
             disabled={selectedItems.length === 0}
             style={{ opacity: selectedItems.length === 0 ? 0.5 : 1 }}
           >
-            {activeTab === 'unsettled' ? `结算选中商品 (${selectedItems.length})` : `取消结算 (${selectedItems.length})`}
+            {settleTab === 'unsettled' ? `结算选中商品 (${selectedItems.length})` : `取消结算 (${selectedItems.length})`}
           </button>
         </div>
       )}
