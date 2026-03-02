@@ -20,7 +20,7 @@ import {
   UploadOutline,
 } from 'antd-mobile-icons';
 import { useItemStore, useAccountStore, useCategoryStore } from '@/store';
-import { saveItems, saveAccounts, saveCategories, saveSettlementLogs } from '@/lib/db';
+import { saveItems, saveAccounts, saveCategories, saveSettlementLogs, getSettlementLogs } from '@/lib/db';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -82,11 +82,14 @@ export default function SettingsPage() {
     }
   };
 
-  const handleExportJSON = () => {
+  const handleExportJSON = async () => {
+    const settlementLogs = await getSettlementLogs();
+    
     const data = {
       accounts,
       categories,
       items,
+      settlementLogs,
       exportedAt: new Date().toISOString(),
       version: 1,
     };
@@ -107,6 +110,20 @@ export default function SettingsPage() {
 
   const handleExportCSV = () => {
     const headers = ['商品名称', '分类', '购买账号', '销售账号', '邮费账号', '售价', '成本', '邮费', '利润', '备注', '是否结算', '创建时间'];
+    const formatDate = (dateStr: string) => {
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-CN', { 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch {
+        return dateStr;
+      }
+    };
     const rows = items.map(item => {
       const buyAccount = accounts.find(a => a.id === item.buyAccountId);
       const sellAccount = accounts.find(a => a.id === item.sellAccountId);
@@ -125,7 +142,7 @@ export default function SettingsPage() {
         item.profit.toString(),
         item.remark || '',
         item.settled ? '是' : '否',
-        item.createdAt,
+        formatDate(item.createdAt),
       ];
     });
 

@@ -33,6 +33,10 @@ interface ImportedRow {
   cost: string;
   shipping: string;
   remark?: string;
+  buyAccountId?: string;
+  sellAccountId?: string;
+  shippingAccountId?: string;
+  isFullBackup?: boolean;
 }
 
 interface FieldMapping {
@@ -94,16 +98,19 @@ export default function ImportPage() {
         if (data.items && Array.isArray(data.items)) {
           const mapped = data.items.map((item: any) => ({
             name: item.name || '',
-            category: item.categoryId ? categories.find(c => c.id === item.categoryId)?.name : undefined,
-            buyAccount: item.buyAccountId ? accounts.find(a => a.id === item.buyAccountId)?.name : undefined,
-            sellAccount: item.sellAccountId ? accounts.find(a => a.id === item.sellAccountId)?.name : undefined,
-            shippingAccount: item.shippingAccountId ? accounts.find(a => a.id === item.shippingAccountId)?.name : undefined,
+            category: item.categoryId || item.categoryId || '',
+            buyAccountId: item.buyAccountId || '',
+            sellAccountId: item.sellAccountId || '',
+            shippingAccountId: item.shippingAccountId || '',
             price: String(item.price || 0),
             cost: String(item.cost || 0),
             shipping: String(item.shipping || 0),
             remark: item.remark || '',
+            isFullBackup: true,
           }));
           setImportedData(mapped);
+          setImportStep('preview');
+          setSelectedRows(mapped.length > 0 ? Array.from({ length: mapped.length }, (_, i) => i) : []);
         } else if (Array.isArray(data)) {
           const mapped = data.map((item: any) => ({
             name: item.name || '',
@@ -117,34 +124,29 @@ export default function ImportPage() {
             remark: item.remark || item.notes || '',
           }));
           setImportedData(mapped);
+          setImportStep('preview');
+          setSelectedRows(mapped.length > 0 ? Array.from({ length: mapped.length }, (_, i) => i) : []);
         }
-        
-        setImportStep('preview');
-        setSelectedRows(importedData.length > 0 ? Array.from({ length: importedData.length }, (_, i) => i) : []);
       } else if (file.name.endsWith('.csv')) {
         setFileType('csv');
-        const lines = text.split('\n').filter(line => line.trim());
-        const headers = parseCSVLine(lines[0]);
-        const rows = lines.slice(1).map(line => {
-          const values = parseCSVLine(line);
-          const obj: any = {};
-          headers.forEach((header, i) => {
-            obj[header] = values[i] || '';
-          });
-          return obj;
-        });
+        const { headers, rows } = parseCSV(text);
         
-        setImportedData(rows);
+        if (headers.length === 0) {
+          Toast.show({ content: 'CSV文件解析失败', position: 'bottom' });
+          return;
+        }
+        
+        setImportedData(rows as unknown as ImportedRow[]);
         
         const autoMapping: FieldMapping = {
           name: headers.find(h => h.includes('名称') || h.includes('商品') || h.includes('name')) || '',
           category: headers.find(h => h.includes('分类') || h.includes('category')) || '',
           buyAccount: headers.find(h => h.includes('购买') || h.includes('买') || h.includes('buy')) || '',
           sellAccount: headers.find(h => h.includes('销售') || h.includes('卖') || h.includes('sell')) || '',
-          shippingAccount: headers.find(h => h.includes('邮费') || h.includes('运费') || h.includes('shipping')) || '',
+          shippingAccount: headers.find(h => h.includes('运费账号') || h.includes('邮费账号') || h.includes('ship') && !h.includes('shipp')) || '',
           price: headers.find(h => h.includes('售价') || h.includes('price')) || '',
           cost: headers.find(h => h.includes('成本') || h.includes('cost')) || '',
-          shipping: headers.find(h => h.includes('邮费') || h.includes('运费') || h.includes('shipping')) || '',
+          shipping: headers.find(h => h.includes('运费') || h.includes('邮费') || h.includes('fee')) || '',
           remark: headers.find(h => h.includes('备注') || h.includes('remark') || h.includes('notes')) || '',
         };
         setFieldMapping(autoMapping);
@@ -153,6 +155,50 @@ export default function ImportPage() {
     } catch (error) {
       Toast.show({ content: '文件解析失败', position: 'bottom' });
     }
+  };
+
+  const parseCSV = (text: string): { headers: string[], rows: Record<string, string>[] } => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"') {
+        if (inQuotes && text[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else if ((char === '\n' || char === '\r') && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else if (char !== '\r') {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+
+    const headerCount = Math.ceil(result.length / 2);
+    if (headerCount < 2) return { headers: [], rows: [] };
+
+    const headers = result.slice(0, headerCount);
+    const values = result.slice(headerCount);
+    
+    const rows: Record<string, string>[] = [];
+    for (let i = 0; i < values.length; i += headerCount) {
+      const row: Record<string, string> = {};
+      headers.forEach((header, j) => {
+        row[header] = values[i + j] || '';
+      });
+      rows.push(row);
+    }
+
+    return { headers, rows };
   };
 
   const parseCSVLine = (line: string): string[] => {
@@ -176,6 +222,21 @@ export default function ImportPage() {
   };
 
   const handleMappingConfirm = () => {
+    const requiredFields = [
+      { key: 'name', label: '商品名称' },
+      { key: 'buyAccount', label: '购买账号' },
+      { key: 'sellAccount', label: '销售账号' },
+      { key: 'price', label: '售价' },
+      { key: 'cost', label: '成本' },
+    ];
+
+    const missingFields = requiredFields.filter(f => !fieldMapping[f.key as keyof typeof fieldMapping]);
+    
+    if (missingFields.length > 0) {
+      Toast.show({ content: `请映射必填字段: ${missingFields.map(f => f.label).join(', ')}`, position: 'bottom' });
+      return;
+    }
+
     setImportStep('preview');
     setSelectedRows(Array.from({ length: importedData.length }, (_, i) => i));
   };
@@ -188,6 +249,9 @@ export default function ImportPage() {
 
     setImporting(true);
     try {
+      const row = importedData[selectedRows[0]];
+      const isFullBackup = row.isFullBackup;
+
       const accountNameToId = (name: string) => {
         const account = accounts.find(a => a.name === name);
         return account?.id || '';
@@ -201,16 +265,50 @@ export default function ImportPage() {
 
       const newItems: Item[] = selectedRows.map(rowIndex => {
         const row = importedData[rowIndex];
-        const price = parseFloat(fieldMapping.price ? row[fieldMapping.price as keyof typeof row] || '0' : '0') || 0;
-        const cost = parseFloat(fieldMapping.cost ? row[fieldMapping.cost as keyof typeof row] || '0' : '0') || 0;
-        const shipping = parseFloat(fieldMapping.shipping ? row[fieldMapping.shipping as keyof typeof row] || '0' : '0') || 0;
         
-        const name = fieldMapping.name ? row[fieldMapping.name as keyof typeof row] || '未命名' : '未命名';
-        const categoryId = fieldMapping.category ? categoryNameToId(row[fieldMapping.category as keyof typeof row] || '') : undefined;
-        const buyAccountId = fieldMapping.buyAccount ? accountNameToId(row[fieldMapping.buyAccount as keyof typeof row] || '') : '';
-        const sellAccountId = fieldMapping.sellAccount ? accountNameToId(row[fieldMapping.sellAccount as keyof typeof row] || '') : '';
-        const shippingAccountId = fieldMapping.shippingAccount ? accountNameToId(row[fieldMapping.shipping as keyof typeof row] || '') : sellAccountId;
-        const remark = fieldMapping.remark ? row[fieldMapping.remark as keyof typeof row] || '' : '';
+        if (isFullBackup) {
+          const price = parseFloat(row.price) || 0;
+          const cost = parseFloat(row.cost) || 0;
+          const shipping = parseFloat(row.shipping) || 0;
+          
+          const buyAccountId = row.buyAccountId || '';
+          const sellAccountId = row.sellAccountId || '';
+          
+          return {
+            id: generateId(),
+            name: row.name || '未命名',
+            categoryId: row.category || undefined,
+            buyAccountId,
+            sellAccountId,
+            shippingAccountId: row.shippingAccountId || sellAccountId,
+            price,
+            cost,
+            shipping,
+            profit: calculateProfit(price, cost, shipping),
+            images: [],
+            remark: row.remark || '',
+            settled: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            version: 1,
+          };
+        }
+
+        const getFieldValue = (field: keyof typeof row): string => {
+          const val = row[field];
+          return val !== undefined && val !== null ? String(val) : '';
+        };
+
+        const price = fieldMapping.price ? parseFloat(getFieldValue(fieldMapping.price as keyof typeof row) || '0') || 0 : 0;
+        const cost = fieldMapping.cost ? parseFloat(getFieldValue(fieldMapping.cost as keyof typeof row) || '0') || 0 : 0;
+        const shipping = fieldMapping.shipping ? parseFloat(getFieldValue(fieldMapping.shipping as keyof typeof row) || '0') || 0 : 0;
+        
+        const name = fieldMapping.name ? getFieldValue(fieldMapping.name as keyof typeof row) || '未命名' : '未命名';
+        const categoryId = fieldMapping.category ? categoryNameToId(getFieldValue(fieldMapping.category as keyof typeof row)) : undefined;
+        const buyAccountId = fieldMapping.buyAccount ? accountNameToId(getFieldValue(fieldMapping.buyAccount as keyof typeof row)) : '';
+        const sellAccountId = fieldMapping.sellAccount ? accountNameToId(getFieldValue(fieldMapping.sellAccount as keyof typeof row)) : '';
+        const shippingAccountId = fieldMapping.shippingAccount ? accountNameToId(getFieldValue(fieldMapping.shippingAccount as keyof typeof row)) : sellAccountId;
+        const remark = fieldMapping.remark ? getFieldValue(fieldMapping.remark as keyof typeof row) : '';
 
         return {
           id: generateId(),
@@ -230,7 +328,7 @@ export default function ImportPage() {
           updatedAt: new Date().toISOString(),
           version: 1,
         };
-      }).filter(item => item.buyAccountId && item.sellAccountId);
+        }).filter(item => (item.buyAccountId && item.sellAccountId) || isFullBackup);
 
       if (newItems.length === 0) {
         Toast.show({ content: '没有有效数据可导入，请检查字段映射', position: 'bottom' });
@@ -383,10 +481,24 @@ export default function ImportPage() {
 
             <div className="space-y-3">
               {importedData.map((row, index) => {
-                const name = fieldMapping.name ? row[fieldMapping.name as keyof typeof row] || '未命名' : `商品 ${index + 1}`;
-                const price = fieldMapping.price ? parseFloat(row[fieldMapping.price as keyof typeof row] || '0') || 0 : 0;
-                const cost = fieldMapping.cost ? parseFloat(row[fieldMapping.cost as keyof typeof row] || '0') || 0 : 0;
-                const shipping = fieldMapping.shipping ? parseFloat(row[fieldMapping.shipping as keyof typeof row] || '0') || 0 : 0;
+                const isFullBackup = row.isFullBackup;
+                const getPreviewFieldValue = (field: keyof typeof row): string => {
+                  const val = row[field];
+                  return val !== undefined && val !== null ? String(val) : '';
+                };
+
+                const name = isFullBackup 
+                  ? (row.name || '未命名')
+                  : (fieldMapping.name ? getPreviewFieldValue(fieldMapping.name as keyof typeof row) || '未命名' : `商品 ${index + 1}`);
+                const price = isFullBackup 
+                  ? (parseFloat(row.price) || 0)
+                  : (fieldMapping.price ? parseFloat(getPreviewFieldValue(fieldMapping.price as keyof typeof row) || '0') || 0 : 0);
+                const cost = isFullBackup 
+                  ? (parseFloat(row.cost) || 0)
+                  : (fieldMapping.cost ? parseFloat(getPreviewFieldValue(fieldMapping.cost as keyof typeof row) || '0') || 0 : 0);
+                const shipping = isFullBackup 
+                  ? (parseFloat(row.shipping) || 0)
+                  : (fieldMapping.shipping ? parseFloat(getPreviewFieldValue(fieldMapping.shipping as keyof typeof row) || '0') || 0 : 0);
                 const profit = price - cost - shipping;
 
                 return (
